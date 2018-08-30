@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 
 import time
+import subprocess
 
 FRAME_COMPARISON_DELAY = 10 # frames to skip when comparing to test for motion
 MOVEMENT_THRESHOLD = 40 # higher = less sensitive to motion
@@ -16,8 +17,8 @@ cap = cv2.VideoCapture(0)
 
 # video encoding
 fourcc = cv2.cv.CV_FOURCC(*'mp4v')
-fileExtension = '.mov'
 out = None
+lastFilename = None
 
 # font used for drawing text on the image
 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -68,7 +69,7 @@ while cap.isOpened():
             count = 0
 
         # get the timestamp in YYYY-MM-DD hour:minute:second format
-        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = time.strftime('%Y-%m-%d_%H:%M:%S')
 
         # draw the timestamp first with thick black text then with thin white
         # text. this will make it legible on any background
@@ -78,6 +79,7 @@ while cap.isOpened():
         # start filming with a new output file once motion starts
         if moving and not filming:
             out = cv2.VideoWriter(timestamp + '.mov', fourcc, 30, (640, 480))
+            lastFilename = timestamp
 
             # write the frames from the buffer
             # in order from oldest to newest
@@ -93,8 +95,15 @@ while cap.isOpened():
             cv2.putText(frame, 'REC', (580, 20), font, 0.75, (0, 0, 255), 2)
 
             if time.time() - lastMotionTime > POST_MOTION_DELAY:
+                # stop filming and release the videowriter
                 filming = False
                 out.release()
+
+                # convert the .mov to a .mp4 with ffmpeg for web display and
+                # file size. then delete the .mov
+                subprocess.Popen(['ffmpeg', '-i', lastFilename + '.mov',
+                    lastFilename + '.mp4'])
+
         else:
             # add frame to the buffer
             buff.append(frame)
