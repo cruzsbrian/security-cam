@@ -7,13 +7,13 @@ import time
 import subprocess
 
 FRAME_COMPARISON_DELAY = 10 # frames to skip when comparing to test for motion
-MOVEMENT_THRESHOLD = 40 # higher = less sensitive to motion
+MOVEMENT_THRESHOLD = 20 # higher = less sensitive to motion
 POST_MOTION_DELAY = 5 # seconds
 PRE_MOTION_FRAMES = 60 # number of frames to include from before motion starts
 DIFF_BLUR = 31 # must be an odd number of pixels
 
 # open the first video in
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 # video encoding
 fourcc = cv2.cv.CV_FOURCC(*'mp4v')
@@ -69,17 +69,22 @@ while cap.isOpened():
             count = 0
 
         # get the timestamp in YYYY-MM-DD hour:minute:second format
-        timestamp = time.strftime('%Y-%m-%d_%H:%M:%S')
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
 
         # draw the timestamp first with thick black text then with thin white
         # text. this will make it legible on any background
-        cv2.putText(frame, timestamp, (10, 20), font, 0.75, (0, 0, 0), 2)
+        cv2.putText(frame, timestamp, (10, 20), font, 0.75, (0, 0, 0), 3)
         cv2.putText(frame, timestamp, (10, 20), font, 0.75, (255, 255, 255))
+
+        #if moving:
+        #    cv2.putText(frame, 'MOVING', (300, 300), font, 1.5, (0, 255, 0), 3)
 
         # start filming with a new output file once motion starts
         if moving and not filming:
-            out = cv2.VideoWriter(timestamp + '.mov', fourcc, 30, (640, 480))
-            lastFilename = timestamp
+            # use underscore instead of space for filenames
+            filename = timestamp.replace(' ', '_') + '.mov'
+            out = cv2.VideoWriter(filename, fourcc, 30, (640, 480))
+            lastFilename = filename
 
             # write the frames from the buffer
             # in order from oldest to newest
@@ -101,9 +106,7 @@ while cap.isOpened():
 
                 # convert the .mov to a .mp4 with ffmpeg for web display and
                 # file size. then delete the .mov
-                subprocess.Popen(['ffmpeg', '-i', lastFilename + '.mov',
-                    lastFilename + '.mp4'])
-
+                subprocess.Popen(['./convert.sh', lastFilename])
         else:
             # add frame to the buffer
             buff.append(frame)
